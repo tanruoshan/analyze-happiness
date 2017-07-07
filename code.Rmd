@@ -1,0 +1,298 @@
+---
+title: "Data Analysis on World Happiness Report"
+author: "Ruo Shan Tan"
+date: "July 6, 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Import packages and data files
+```{r}
+library(ggplot2)
+library(dplyr)
+library(highcharter)
+library(formattable)
+library(plotly)
+library(countrycode)
+library(maps)
+data(worldgeojson)
+df16<-read.csv("C:/Users/8Users/Desktop/Happiness/2016.csv")
+df17<-read.csv("C:/Users/8Users/Desktop/Happiness/2017.csv")
+```
+
+## Organize dataset
+```{r}
+df1<-merge(df16[,c(1,3)],
+           df17[,c(1,3)],
+           by.x = "Country",
+           by.y = "Country")
+colnames(df1)<-c("Country","Happiness Rank 2016","Happiness Rank 2017")
+df1<-df1%>%
+  mutate(`Rank Change`=`Happiness Rank 2016`-`Happiness Rank 2017`)
+```
+
+
+## TABULATION BY CHANGES IN HAPPINESS RANKING
+```{r}
+formattable(df1,list(
+  `Rank Change` = formatter(
+    "span",
+    style=~formattable::style(color=ifelse(`Rank Change`>0,"green","red")))))%>%
+    as.datatable()
+```
+
+
+##HAPPINESS OVERVIEW ON WORLD MAP
+```{r}
+df<-df16[,c("Country","Happiness.Score")]
+df$Country<-as.character(df$Country)
+colnames(df)<-c("country","value")
+correction16<-c("Congo (Brazzaville)"="Democratic Republic of the Congo","Guinea"="Equatorial Guinea","North Cyprus"="Northern Cyprus","Serbia"="Republic of Serbia","Congo (Brazzaville)"="Republic of Congo","Somaliland region"="Somaliland","Tanzania"="United Republic of Tanzania","United States Minor Outlying Islands"="United States","United States"="United States of America","United States"="United States Virgin Islands","Russia"="Russian Federation","Venezuela"="Venezuela, Bolivarian Republic of","Bolivia"="Bolivia (Plurinational State of)","South Korea"="Republic of Korea" )
+for(i in names(correction16)){
+  df[df$country==i,"country"]<-correction16[i]
+}
+
+
+df17.1<-df17[,c("Country","Happiness.Score")]
+df17.1$Country<-as.character(df17.1$Country)
+colnames(df17.1)<-c("country","value")
+correction17.1<-c("Congo (Brazzaville)"="Democratic Republic of the Congo","Guinea"="Equatorial Guinea","North Cyprus"="Northern Cyprus","Serbia"="Republic of Serbia","Congo (Brazzaville)"="Republic of Congo","Somaliland region"="Somaliland","Tanzania"="United Republic of Tanzania","United States Minor Outlying Islands"="United States","United States"="United States of America","United States"="United States Virgin Islands","Somaliland Region"="Somaliland","Russia"="Russian Federation","Venezuela"="Venezuela, Bolivarian Republic of","Bolivia"="Bolivia (Plurinational State of)","South Korea"="Republic of Korea" )
+for(i in names(correction17.1)){
+  df17.1[df17.1$country==i,"country"]<-correction17.1[i]
+}
+
+
+
+
+countrycode_data$country.name.en<-as.factor(countrycode_data$country.name.en)
+df$iso3<-countrycode_data[match(df$country,countrycode_data$country.name.en),"iso3c"]
+df17.1$iso3<-countrycode_data[match(df17.1$country,countrycode_data$country.name.en),"iso3c"]
+
+
+ map1<-highchart() %>% 
+  hc_add_series_map(worldgeojson, df, value = "value", joinBy = "iso3") %>% 
+  hc_legend(enabled = TRUE) %>% 
+  hc_add_theme(hc_theme_google()) %>% 
+  hc_mapNavigation(enabled = TRUE) %>%
+  hc_colorAxis(min=min(df$value),max=max(df$value),minColor = "#00ffff", maxColor = "#ffff00")%>%
+  hc_credits(enabled = F) 
+
+ map2<- highchart() %>% 
+  hc_add_series_map(worldgeojson, df17.1, value = "value", joinBy = "iso3") %>% 
+  hc_legend(enabled = TRUE) %>% 
+  hc_add_theme(hc_theme_google()) %>% 
+  hc_mapNavigation(enabled = TRUE) %>%
+  hc_colorAxis(min=min(df17.1$value),max=max(df17.1$value),minColor = "#00ffff", maxColor = "#ffff00")%>%
+  hc_credits(enabled = F) 
+```
+
+###2016
+```{r}
+map1
+```
+
+
+###2017
+```{r}
+map2
+```
+
+##BOXPLOT BY CONTINENTS
+
+###2016
+```{r}
+plot_ly(df16,x=~Region,
+        y=~Happiness.Score,
+        type="box",
+        boxpoints="all",
+        pointpos = -1.8,
+        color=~Region)%>%
+  layout(xaxis=list(showticklabels = FALSE),
+         margin=list(b = 100))
+```
+
+### 2017
+```{r}
+plot_ly(df17,x=~Region,
+        y=~Happiness.Score,
+        type="box",
+        boxpoints="all",
+        pointpos = -1.8,
+        color=~Region)%>%
+  layout(xaxis=list(showticklabels = FALSE),
+         margin=list(b = 100))
+```
+
+
+## HAPPINESS VS LIFE EXPECTANCY
+
+###2016
+```{r}
+plot_ly(df16,x=~Happiness.Score,
+        y=~Health..Life.Expectancy.,
+        color=~Region,
+        colors=c("red","orange","yellow","green","blue","purple","black","grey","gold","darkblue"),
+        size=~Happiness.Score,
+        hoverinfo = 'text',
+        text=~paste(Country))%>%
+  layout(xaxis=list(title="Happiness Score"),
+         yaxis=list(title="Life Expectancy"))
+```
+
+###2017
+```{r}
+plot_ly(df17,x=~Happiness.Score,
+        y=~Health..Life.Expectancy.,
+        color=~Region,
+        colors=c("red","orange","yellow","green","blue","purple","black","grey","gold","darkblue"),
+        size=~Happiness.Score,
+        hoverinfo = 'text',
+        text=~paste(Country))%>%
+  layout(xaxis=list(title="Happiness Score"),
+         yaxis=list(title="LIFE EXPECTANCY"))
+```
+
+
+##HAPPINESS VS ECONOMY
+
+###2016
+```{r}
+plot_ly(df16,x=~Happiness.Score,
+        y=~Economy..GDP.per.Capita.,
+        color=~Region,
+        colors=c("red","orange","yellow","green","blue","purple","black","grey","gold","darkblue"),
+        size=~Happiness.Score,
+        hoverinfo = 'text',
+        text=~paste(Country))%>%
+  layout(xaxis=list(title="Happiness Score"),
+         yaxis=list(title="GDP per Capita"))
+```
+
+###2017
+```{r}
+plot_ly(df17,x=~Happiness.Score,
+        y=~Economy..GDP.per.Capita.,
+        color=~Region,
+        colors=c("red","orange","yellow","green","blue","purple","black","grey","gold","darkblue"),
+        size=~Happiness.Score,
+        hoverinfo = 'text',
+        text=~paste(Country))%>%
+  layout(xaxis=list(title="Happiness Score"),
+         yaxis=list(title="GDP per Capita"))
+```
+
+##HAPPINESS VS FAMILY
+
+###2016
+```{r}
+plot_ly(df16,x=~Happiness.Score,
+        y=~Family,
+        color=~Region,
+        colors=c("red","orange","yellow","green","blue","purple","black","grey","gold","darkblue"),
+        size=~Happiness.Score,
+        hoverinfo = 'text',
+        text=~paste(Country))%>%
+  layout(xaxis=list(title="Happiness Score"),
+         yaxis=list(title="Family"))
+```
+
+###2017
+```{r}
+plot_ly(df17,x=~Happiness.Score,
+        y=~Family,
+        color=~Region,
+        colors=c("red","orange","yellow","green","blue","purple","black","grey","gold","darkblue"),
+        size=~Happiness.Score,
+        hoverinfo = 'text',
+        text=~paste(Country))%>%
+  layout(xaxis=list(title="Happiness Score"),
+         yaxis=list(title="Family"))
+```
+
+
+##HAPPINESS VS FREEDOM
+
+###2016
+```{r}
+plot_ly(df16,x=~Happiness.Score,
+        y=~Freedom,
+        color=~Region,
+        colors=c("red","orange","yellow","green","blue","purple","black","grey","gold","darkblue"),
+        size=~Happiness.Score,
+        hoverinfo = 'text',
+        text=~paste(Country))%>%
+  layout(xaxis=list(title="Happiness Score"),
+         yaxis=list(title="Freedom"))
+```
+
+###2017
+```{r}
+plot_ly(df17,x=~Happiness.Score,
+        y=~Freedom,
+        color=~Region,
+        colors=c("red","orange","yellow","green","blue","purple","black","grey","gold","darkblue"),
+        size=~Happiness.Score,
+        hoverinfo = 'text',
+        text=~paste(Country))%>%
+  layout(xaxis=list(title="Happiness Score"),
+         yaxis=list(title="Freedom"))
+```
+
+##HAPPINESS VS GENEROSITY
+
+###2016
+```{r}
+plot_ly(df16,x=~Happiness.Score,
+        y=~Generosity,
+        color=~Region,
+        colors=c("red","orange","yellow","green","blue","purple","black","grey","gold","darkblue"),
+        size=~Happiness.Score,
+        hoverinfo = 'text',
+        text=~paste(Country))%>%
+  layout(xaxis=list(title="Happiness Score"),
+         yaxis=list(title="Generosity"))
+```
+
+###2017
+```{r}
+plot_ly(df17,x=~Happiness.Score,
+        y=~Generosity,
+        color=~Region,
+        colors=c("red","orange","yellow","green","blue","purple","black","grey","gold","darkblue"),
+        size=~Happiness.Score,
+        hoverinfo = 'text',
+        text=~paste(Country))%>%
+  layout(xaxis=list(title="Happiness Score"),
+         yaxis=list(title="Generosity"))
+```
+
+##Happiness Trust;Gov
+
+###2016
+```{r}
+plot_ly(df16,x=~Happiness.Score,
+        y=~Trust..Government.Corruption.,
+        color=~Region,
+        colors=c("red","orange","yellow","green","blue","purple","black","grey","gold","darkblue"),
+        size=~Happiness.Score,
+        hoverinfo = 'text',
+        text=~paste(Country))%>%
+  layout(xaxis=list(title="Happiness Score"),
+         yaxis=list(title="Trust..Government.Corruption."))
+```
+
+###2017
+```{r}
+plot_ly(df17,x=~Happiness.Score,
+        y=~Trust..Government.Corruption.,
+        color=~Region,
+        colors=c("red","orange","yellow","green","blue","purple","black","grey","gold","darkblue"),
+        size=~Happiness.Score,
+        hoverinfo = 'text',
+        text=~paste(Country))%>%
+  layout(xaxis=list(title="Happiness Score"),
+         yaxis=list(title="Trust towards the Government"))
+```
